@@ -1,0 +1,49 @@
+name: Mirror release to Hugging Face
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the plan and change nothing
+        type: boolean
+        default: false
+      force_deletes:
+        description: Allow removing more than 10% of the backup in one run
+        type: boolean
+        default: false
+
+concurrency:
+  group: mirror-to-huggingface
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install huggingface_hub==2.4.0
+      - name: Mirror
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          HF_HUB_DISABLE_PROGRESS_BARS: "1"
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          FORCE_DELETES: ${{ inputs.force_deletes && '1' || '0' }}
+        run: python .github/scripts/mirror_to_hf.py
+      # GitHub disables scheduled workflows after 60 days without repo activity,
+      # and this repo rarely gets commits.
+      - name: Keep the schedule enabled
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable mirror-to-huggingface.yml --repo "$GITHUB_REPOSITORY"
