@@ -2,7 +2,7 @@ name: Mirror release to Hugging Face
 
 on:
   schedule:
-    - cron: "17 4 * * *"
+    - cron: "17 4 1,15 * *"
   workflow_dispatch:
     inputs:
       dry_run:
